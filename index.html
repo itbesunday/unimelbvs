@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Face-Off: UniMelb BCom ELO</title>
+    <style>
+        /* Basic Reset & Body Styling */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%); /* Light blueish-grey gradient */
+            display: flex;
+            flex-direction: column; /* Stack matchup and button */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 30px;
+            color: #333;
+        }
+
+        h1 {
+           margin-bottom: 30px;
+           color: #0a66c2; /* LinkedIn blue */
+           font-weight: 400;
+           text-align: center;
+        }
+
+        /* App Container */
+        .app-container {
+            width: 100%;
+            max-width: 900px; /* Wider for two profiles */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Matchup Container */
+        .matchup-container {
+            display: flex;
+            justify-content: space-around; /* Space out profiles */
+            width: 100%;
+            gap: 30px; /* Gap between profiles */
+            margin-bottom: 30px;
+        }
+
+        /* Profile Card Styling */
+        .profile-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            width: 48%; /* Adjust width for two cards + gap */
+            min-height: 580px; /* Increased height slightly for ELO */
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            cursor: pointer;
+            position: relative; /* For ELO positioning */
+            border: 1px solid #e0e4e8;
+        }
+
+        .profile-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .profile-card.selected {
+             border: 2px solid #0a66c2; /* Highlight selected */
+             box-shadow: 0 8px 20px rgba(10, 102, 194, 0.2);
+        }
+
+        .profile-card.not-selected {
+            opacity: 0.7; /* Fade out the non-selected */
+            transform: scale(0.98);
+        }
+
+
+        .profile-card .profile-image {
+            width: 100%;
+            height: 180px;
+            background-color: #e0e4e8; /* Placeholder color */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 45px;
+            color: #a0a8b0;
+            overflow: hidden;
+            position: relative; /* Needed for blur transition */
+        }
+
+        .profile-card .profile-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: filter 0.4s ease-in-out; /* Smooth unblur */
+        }
+
+        .profile-card .profile-image.blurred img {
+            filter: blur(8px);
+        }
+
+        .profile-content {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-content .name-container {
+            display: flex;
+            align-items: baseline; /* Align name and ELO change nicely */
+            margin-bottom: 2px; /* Reduced margin */
+            min-height: 30px; /* Ensure space for ELO */
+            position: relative; /* For absolute positioning of ELO change */
+        }
+
+        .profile-content h2 {
+            font-size: 1.3rem;
+            color: #1d1d1d;
+            margin-right: 5px; /* Space between name and ELO change */
+            transition: filter 0.4s ease-in-out; /* Smooth unblur */
+            display: inline-block; /* Needed for blur */
+            position: relative; /* Context for ELO change positioning */
+            max-width: calc(100% - 50px); /* Prevent name overlapping ELO change too much */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .profile-content h2.blurred {
+            filter: blur(5px);
+            background-color: #e0e4e8; /* Simulate blurred text block */
+            color: transparent; /* Hide actual text when blurred */
+            border-radius: 4px;
+             min-width: 150px;
+             min-height: 1.3rem;
+             text-overflow: clip; /* Prevent ellipsis showing on blur block */
+             -webkit-user-select: none; /* Prevent selecting blurred text */
+             -moz-user-select: none;
+             -ms-user-select: none;
+             user-select: none;
+        }
+
+
+        /* ELO Change Indicator */
+        .elo-change {
+            font-size: 0.9rem; /* Slightly smaller */
+            font-weight: bold;
+            padding: 2px 5px;
+            border-radius: 4px;
+            opacity: 0;
+            position: absolute;
+            top: -2px; /* Adjust vertical position */
+            right: -5px; /* Position near the right edge of name container */
+            transform: translateX(100%) translateY(10px); /* Start off right and below */
+            white-space: nowrap;
+            z-index: 10; /* Ensure it's above blurred name */
+        }
+
+
+        .elo-change.show {
+             /* Keep animation */
+             animation: fadeInMoveUp 1.5s ease-out forwards;
+        }
+
+        /* Adjusted Animation Keyframes */
+        @keyframes fadeInMoveUp {
+            0% {
+                opacity: 0;
+                transform: translateX(100%) translateY(10px); /* Start further right */
+            }
+            20% {
+                opacity: 1;
+                 transform: translateX(0) translateY(0); /* Move to final position */
+            }
+            80% {
+                opacity: 1;
+                 transform: translateX(0) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(0) translateY(-10px); /* Fade out upwards */
+            }
+        }
+
+
+        .elo-change.win {
+            color: #ffffff;
+            background-color: #28a745; /* Green for win */
+        }
+
+        .elo-change.lose {
+            color: #ffffff;
+            background-color: #dc3545; /* Red for lose */
+        }
+
+        /* Total ELO Display */
+        .total-elo {
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 8px; /* Space below ELO */
+            font-weight: 500;
+            transition: filter 0.4s ease-in-out; /* Smooth unblur */
+            display: inline-block; /* Needed for blurring block */
+            min-width: 80px; /* Estimate width */
+        }
+        .total-elo strong {
+            color: #0a66c2; /* LinkedIn blue for ELO value */
+            min-width: 35px; /* Ensure space for 4 digits */
+            display: inline-block; /* Needed for min-width */
+            text-align: right; /* Align number nicely if width changes */
+        }
+        .total-elo.blurred {
+             filter: blur(5px);
+             background-color: #e8eaed; /* Simulate blurred text block */
+             color: transparent; /* Hide actual text when blurred */
+             border-radius: 4px;
+             -webkit-user-select: none; /* Prevent selecting blurred text */
+             -moz-user-select: none;
+             -ms-user-select: none;
+             user-select: none;
+        }
+         /* Hide strong tag content specifically when blurred */
+        .total-elo.blurred strong {
+             color: transparent;
+        }
+
+
+        .profile-content .degree {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .profile-content h3 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .experiences {
+             /* No flex-grow needed if height is sufficient */
+        }
+
+        .experience {
+            display: flex;
+            margin-bottom: 12px;
+            /* No border needed if not scrolling */
+        }
+
+        .experience-logo {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            margin-right: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 9px;
+            font-weight: bold;
+            color: #777;
+            text-align: center;
+            overflow: hidden;
+            padding: 2px;
+        }
+
+        .experience-details {
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Vertically center text */
+        }
+
+        .experience-details .title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #222;
+        }
+
+        .experience-details .company-type {
+            font-size: 0.8rem;
+            color: #444;
+            margin-top: 1px;
+        }
+
+        .experience-details .duration,
+        .experience-details .location {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        /* Next Matchup Button */
+        #next-matchup-btn {
+            background-color: #0a66c2; /* LinkedIn blue */
+            color: white;
+            border: none;
+            border-radius: 25px; /* Pill shape */
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(10, 102, 194, 0.2);
+            margin-top: 10px; /* Add some space above button */
+        }
+
+        #next-matchup-btn:hover:not(:disabled) {
+            background-color: #004182; /* Darker blue */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(10, 102, 194, 0.3);
+        }
+
+        #next-matchup-btn:disabled {
+            background-color: #cdd2d8; /* Disabled grey */
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+         /* Utility Class */
+        .hidden {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>LinkedIn Face-Off</h1>
+
+    <div class="app-container">
+        <div class="matchup-container">
+            <div class="profile-card" id="profile-left">
+                <div class="profile-image blurred" id="img-left">
+                    <img src="" alt="Profile Left">
+                </div>
+                <div class="profile-content">
+                    <div class="name-container">
+                         <h2 id="name-left" class="blurred">Loading Name...</h2>
+                         <span class="elo-change" id="elo-left"></span>
+                    </div>
+                    <p class="total-elo blurred" id="total-elo-paragraph-left">ELO: <strong id="total-elo-left">---</strong></p>
+                    <p class="degree" id="degree-left">Bachelor of Commerce at The University of Melbourne</p>
+                    <h3>Experience</h3>
+                    <div class="experiences" id="experiences-left">
+                        <!-- Experiences loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-card" id="profile-right">
+                 <div class="profile-image blurred" id="img-right">
+                     <img src="" alt="Profile Right">
+                 </div>
+                 <div class="profile-content">
+                     <div class="name-container">
+                          <h2 id="name-right" class="blurred">Loading Name...</h2>
+                          <span class="elo-change" id="elo-right"></span>
+                     </div>
+                     <p class="total-elo blurred" id="total-elo-paragraph-right">ELO: <strong id="total-elo-right">---</strong></p>
+                     <p class="degree" id="degree-right">Bachelor of Commerce at The University of Melbourne</p>
+                     <h3>Experience</h3>
+                     <div class="experiences" id="experiences-right">
+                         <!-- Experiences loaded here -->
+                     </div>
+                 </div>
+            </div>
+        </div>
+
+        <button id="next-matchup-btn" disabled>Select a Profile to Proceed</button>
+    </div>
+
+    <script>
+        // --- Data Generation ---
+        const firstNames = ["Aisha", "Ben", "Chloe", "David", "Emily", "Frank", "Grace", "Henry", "Isabelle", "Jack", "Kate", "Liam", "Mia", "Noah", "Olivia", "Peter", "Quinn", "Ryan", "Sophia", "Tom", "Uma", "Victor", "Willow", "Xavier", "Yara", "Zoe", "James", "Anna", "Michael", "Sarah"];
+        const lastNames = ["Smith", "Jones", "Williams", "Brown", "Davis", "Miller", "Wilson", "Moore", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin", "Thompson", "Garcia", "Martinez", "Robinson", "Clark", "Rodriguez", "Lewis", "Lee", "Walker", "Hall", "Allen", "Young", "Hernandez", "King", "Wright", "Nguyen", "Chen", "Li", "Wang"];
+        const companies = ["Deloitte", "PwC", "EY", "KPMG", "McKinsey", "BCG", "Bain", "Goldman Sachs", "J.P. Morgan", "Morgan Stanley", "Macquarie", "Barrenjoey", "UBS", "L'Oréal", "Unilever", "Procter & Gamble", "Google", "Microsoft", "ANZ", "CBA", "NAB", "Westpac", "Telstra", "Woolworths", "Coles", "Myer", "Kearney", "Oliver Wyman", "Accenture", "Cbus Super", "AustralianSuper", "Future Fund", "Department of Treasury", "Department of Education", "Victorian Government"];
+        const roles = ["Intern", "Vacationer", "Analyst", "Associate", "Consultant", "Assistant", "Officer", "Member", "Coordinator", "Specialist"];
+        const departments = ["Audit", "Tax", "Consulting", "M&A", "Investment Banking", "Markets", "Asset Management", "Risk", "Marketing", "Human Resources", "Operations", "Data Science", "Strategy", "Corporate Finance", "Technology", "Policy"];
+        const types = ["Full-time", "Part-time", "Internship", "Contract", "Casual", "Volunteering"];
+        const durations = ["2 mos", "3 mos", "4 mos", "6 mos", "1 yr", "1 yr 2 mos", "1 yr 6 mos", "2 yrs", "Present"];
+        const locations = ["Melbourne, VIC", "Sydney, NSW", "Brisbane, QLD", "Perth, WA", "Canberra, ACT", "Remote", "On-site", "Hybrid"];
+        const societies = ["FMAA", "ESSA", "MMI", "180 Degrees Consulting", "Melbourne Consulting Group", "Enactus", "Global Consulting Group", "Asialink", "University Network for Investing and Trading (UNIT)"];
+        const partTimeJobs = ["Tutor", "Sales Assistant", "Barista", "Waiter/Waitress", "Retail Associate", "Customer Service Rep", "Admin Assistant", "Research Assistant", "Team Member"];
+
+        function getRandomElement(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function generateRandomExperience(isStudentJob = false) {
+            let title, company, type, logoText;
+            if (isStudentJob && Math.random() < 0.5) { // 50% chance student job is society related
+                company = getRandomElement(societies);
+                title = getRandomElement(["President", "Treasurer", "Secretary", "Director", "Committee Member", "Project Manager"]);
+                type = "Student Society";
+                logoText = company.substring(0, 3).toUpperCase();
+            } else if (isStudentJob) {
+                company = getRandomElement(["University of Melbourne", "Local Cafe", "Boost Juice", "Starbucks", "Myer", "Woolworths", "Coles"]);
+                title = getRandomElement(partTimeJobs);
+                type = getRandomElement(["Part-time", "Casual"]);
+                 logoText = company.substring(0, 3).toUpperCase();
+            }
+             else { // Internship/Vacationer/Grad role focus
+                company = getRandomElement(companies);
+                title = `${getRandomElement(roles)}${Math.random() > 0.3 ? (' - ' + getRandomElement(departments)) : ''}`; // Add department sometimes
+                type = getRandomElement(["Internship", "Full-time", "Contract"]);
+                logoText = company.split(' ')[0].substring(0,3).toUpperCase(); // Use first word for logo
+            }
+
+            return {
+                title: title,
+                company: company,
+                logoText: logoText,
+                type: type,
+                duration: getRandomElement(durations) + (type === 'Part-time' || type === 'Casual' ? ` · ${Math.random() > 0.5 ? 'Present' : `${Math.floor(Math.random() * 12) + 1} mos`}` : ''), // Add more detail for PT/Casual
+                location: getRandomElement(locations)
+            };
+        }
+
+        function generateRandomProfile() {
+            const firstName = getRandomElement(firstNames);
+            const lastName = getRandomElement(lastNames);
+            const name = `${firstName} ${lastName}`;
+            const experiences = [];
+            const numExperiences = Math.floor(Math.random() * 3) + 2; // Generate 2-4 experiences
+
+            for (let i = 0; i < numExperiences; i++) {
+                const isStudentRoleLikely = i > (numExperiences - 2);
+                experiences.push(generateRandomExperience(isStudentRoleLikely));
+            }
+            experiences.sort((a, b) => (b.duration.includes('yr') || b.duration.includes('Present')) - (a.duration.includes('yr') || a.duration.includes('Present')));
+
+            return {
+                name: name,
+                degree: "Bachelor of Commerce at The University of Melbourne",
+                imageUrl: `https://placehold.co/400x180/${Math.floor(Math.random()*16777215).toString(16)}/ffffff?text=${firstName[0]}${lastName[0]}`, // Random color placeholder
+                experiences: experiences.slice(0, 4), // Limit to max 4 displayed
+                elo: Math.floor(Math.random() * 601) + 1200 // Random ELO 1200-1800
+            };
+        }
+
+
+        // --- ELO Calculation ---
+        const K_FACTOR = 32;
+
+        function calculateElo(winnerElo, loserElo) {
+            const expectedWinner = 1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
+            const expectedLoser = 1 / (1 + Math.pow(10, (winnerElo - loserElo) / 400));
+
+            const newWinnerElo = winnerElo + K_FACTOR * (1 - expectedWinner);
+            const newLoserElo = loserElo + K_FACTOR * (0 - expectedLoser);
+
+            // Return the *change* and the *new absolute* values
+            return {
+                winnerChange: Math.round(newWinnerElo - winnerElo),
+                loserChange: Math.round(newLoserElo - loserElo), // Will be negative or zero
+                newWinnerElo: Math.round(newWinnerElo),
+                newLoserElo: Math.round(newLoserElo)
+            };
+        }
+
+        // --- ELO Animation ---
+        function animateEloUpdate(element, startElo, endElo, duration = 750) {
+            let currentElo = startElo;
+            const difference = endElo - startElo;
+            if (difference === 0) { // No change, just display final value
+                 element.textContent = endElo;
+                 return;
+            }
+            const stepTime = 15; // Milliseconds per step
+            const steps = duration / stepTime;
+            const increment = difference / steps;
+            let stepCount = 0;
+
+             const timer = setInterval(() => {
+                 stepCount++;
+                 currentElo += increment;
+
+                 // Ensure we don't overshoot and display the exact final value
+                 if ((increment > 0 && currentElo >= endElo) || (increment < 0 && currentElo <= endElo) || stepCount >= steps) {
+                     element.textContent = Math.round(endElo); // Display final integer
+                     clearInterval(timer);
+                 } else {
+                     element.textContent = Math.round(currentElo); // Display intermediate integer
+                 }
+             }, stepTime);
+        }
+
+
+        // --- DOM Elements ---
+        const profileLeftCard = document.getElementById('profile-left');
+        const profileRightCard = document.getElementById('profile-right');
+        const imgLeft = document.getElementById('img-left');
+        const imgRight = document.getElementById('img-right');
+        const nameLeft = document.getElementById('name-left');
+        const nameRight = document.getElementById('name-right');
+        // const degreeLeft = document.getElementById('degree-left'); // Static text
+        // const degreeRight = document.getElementById('degree-right'); // Static text
+        const experiencesLeft = document.getElementById('experiences-left');
+        const experiencesRight = document.getElementById('experiences-right');
+        const eloLeft = document.getElementById('elo-left'); // Change indicator
+        const eloRight = document.getElementById('elo-right'); // Change indicator
+        const totalEloLeft = document.getElementById('total-elo-left'); // Total ELO number
+        const totalEloRight = document.getElementById('total-elo-right'); // Total ELO number
+        const totalEloParagraphLeft = document.getElementById('total-elo-paragraph-left'); // Paragraph containing total ELO
+        const totalEloParagraphRight = document.getElementById('total-elo-paragraph-right'); // Paragraph containing total ELO
+        const nextBtn = document.getElementById('next-matchup-btn');
+
+        // --- State ---
+        let currentProfileLeft = null;
+        let currentProfileRight = null;
+        let interactionAllowed = true;
+
+        // --- Display Logic ---
+        function renderExperience(exp) {
+             return `
+                <div class="experience">
+                    <div class="experience-logo">${exp.logoText || exp.company.substring(0, 3).toUpperCase()}</div>
+                    <div class="experience-details">
+                        <div class="title">${exp.title}</div>
+                        <div class="company-type">${exp.company} · ${exp.type}</div>
+                        <div class="duration">${exp.duration}</div>
+                        ${exp.location ? `<div class="location">${exp.location}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayMatchup(profileL, profileR) {
+            currentProfileLeft = profileL;
+            currentProfileRight = profileR;
+
+            // Reset styles and content
+            [profileLeftCard, profileRightCard].forEach(card => {
+                card.classList.remove('selected', 'not-selected');
+            });
+            // Add blurred class to relevant elements
+            [imgLeft, imgRight, nameLeft, nameRight, totalEloParagraphLeft, totalEloParagraphRight].forEach(el => {
+                 el.classList.add('blurred');
+            });
+            [eloLeft, eloRight].forEach(el => {
+                el.textContent = '';
+                el.className = 'elo-change'; // Reset classes
+            });
+            // Reset total ELO display text
+            totalEloLeft.textContent = profileL.elo; // Still set the underlying number
+            totalEloRight.textContent = profileR.elo;
+
+
+            // Update Left Profile
+            imgLeft.querySelector('img').src = profileL.imageUrl;
+            imgLeft.querySelector('img').alt = profileL.name;
+            nameLeft.textContent = profileL.name;
+            experiencesLeft.innerHTML = profileL.experiences.map(renderExperience).join('');
+
+            // Update Right Profile
+            imgRight.querySelector('img').src = profileR.imageUrl;
+            imgRight.querySelector('img').alt = profileR.name;
+            nameRight.textContent = profileR.name;
+            experiencesRight.innerHTML = profileR.experiences.map(renderExperience).join('');
+
+            nextBtn.disabled = true;
+            nextBtn.textContent = "Select a Profile to Proceed";
+            interactionAllowed = true; // Allow clicking again
+        }
+
+
+        // --- Interaction Logic ---
+        function handleProfileClick(winnerCard, loserCard, winnerProfile, loserProfile, winnerEloEl, loserEloEl, winnerTotalEloEl, loserTotalEloEl, winnerTotalEloParagraph, loserTotalEloParagraph) {
+            if (!interactionAllowed) return;
+            interactionAllowed = false; // Prevent multiple clicks
+
+            // 1. Unblur relevant elements
+            [imgLeft, imgRight, nameLeft, nameRight, totalEloParagraphLeft, totalEloParagraphRight].forEach(el => el.classList.remove('blurred'));
+
+            // 2. Calculate ELO
+            const initialWinnerElo = winnerProfile.elo; // Store initial ELO for animation
+            const initialLoserElo = loserProfile.elo;
+            const eloResult = calculateElo(winnerProfile.elo, loserProfile.elo);
+
+             // Update ELO in the profile objects
+            winnerProfile.elo = eloResult.newWinnerElo;
+            loserProfile.elo = eloResult.newLoserElo;
+            console.log(`New ELO - ${winnerProfile.name}: ${winnerProfile.elo}, ${loserProfile.name}: ${loserProfile.elo}`);
+
+
+             // 3. Display ELO *Change* animation
+            winnerEloEl.textContent = `+${eloResult.winnerChange}`;
+            winnerEloEl.classList.add('win', 'show');
+
+            loserEloEl.textContent = `${eloResult.loserChange}`; // Already includes sign
+            loserEloEl.classList.add('lose', 'show');
+
+            // 4. Animate Total ELO update (the number inside the paragraph)
+             animateEloUpdate(winnerTotalEloEl, initialWinnerElo, eloResult.newWinnerElo);
+             animateEloUpdate(loserTotalEloEl, initialLoserElo, eloResult.newLoserElo);
+
+
+            // 5. Visually mark winner/loser
+            winnerCard.classList.add('selected');
+            loserCard.classList.add('not-selected');
+
+            // 6. Enable Next button
+             nextBtn.disabled = false;
+             nextBtn.textContent = "Next Matchup";
+        }
+
+
+        profileLeftCard.addEventListener('click', () => {
+             handleProfileClick(
+                 profileLeftCard, profileRightCard,
+                 currentProfileLeft, currentProfileRight,
+                 eloLeft, eloRight,                      // Change indicators
+                 totalEloLeft, totalEloRight,           // Total ELO numbers (strong tags)
+                 totalEloParagraphLeft, totalEloParagraphRight // Paragraph elements (for unblurring)
+             );
+        });
+
+        profileRightCard.addEventListener('click', () => {
+             handleProfileClick(
+                 profileRightCard, profileLeftCard,
+                 currentProfileRight, currentProfileLeft,
+                 eloRight, eloLeft,                      // Change indicators
+                 totalEloRight, totalEloLeft,           // Total ELO numbers (strong tags)
+                 totalEloParagraphRight, totalEloParagraphLeft // Paragraph elements (for unblurring)
+             );
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (nextBtn.disabled) return;
+            loadNextMatchup();
+        });
+
+        // --- Initial Load ---
+        function loadNextMatchup() {
+             const profile1 = generateRandomProfile();
+             const profile2 = generateRandomProfile();
+             displayMatchup(profile1, profile2);
+        }
+
+        // Load the first matchup when the page loads
+        loadNextMatchup();
+
+    </script>
+
+</body>
+</html>
